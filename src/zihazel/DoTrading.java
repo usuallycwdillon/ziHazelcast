@@ -15,6 +15,7 @@ import com.hazelcast.core.IMap;
 import com.hazelcast.core.IdGenerator;
 import java.io.Serializable;
 import java.util.Map;
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import static zihazel.ZIHTraders.*;
 
@@ -30,10 +31,9 @@ public class DoTrading implements Runnable, Serializable, HazelcastInstanceAware
     
     @Override
     public void setHazelcastInstance(HazelcastInstance hz) {
-        this.hz = hz;
+        this.hz = hz;  
     }
-    
-    
+       
     
     @Override
     public void run() {
@@ -41,37 +41,44 @@ public class DoTrading implements Runnable, Serializable, HazelcastInstanceAware
         IMap<Long, BuyerAgent> buyers = hz.getMap("buyers");
         IMap<Long, SellerAgent> sellers = hz.getMap("sellers");
         Map<Long, Double> data = hz.getMap("data");
+        List<Long> sellerKeys = hz.getList("sellerKeys");
+        List<Long> buyerKeys = hz.getList("buyerKeys");
        
-        long        buyerKey, sellerKey;
-        double      bidPrice, askPrice, transactionPrice;
-        //DecimalFormat twoDigits = new DecimalFormat("00.00");
+        long    buyerKey; 
+        long    sellerKey;
+        double  bidPrice, askPrice, transactionPrice;
+        //DecimalFormat twoDigits = new DecimalFormat("00.00");        
+        
 
         for (long counter = 1; counter < numberOfTradesHere; counter++) {
             // Pick a buyer and a seller at random             
             buyerKey  = ThreadLocalRandom.current().nextLong(numberOfBuyers);
             sellerKey = ThreadLocalRandom.current().nextLong(numberOfSellers);
             
-            // if they haven't traded, create a copy of them and see if they'll trade
-            if(!buyers.get(buyerKey).traded && !sellers.get(sellerKey).traded) {
-                BuyerAgent potentialBuyer = buyers.get(buyerKey);
-                SellerAgent potentialSeller = sellers.get(sellerKey);
+            while (buyers.containsKey(buyerKey) && sellers.containsKey(sellerKey)) {
                 
-                bidPrice = potentialBuyer.formBidPrice();
-                askPrice = potentialSeller.formAskPrice();
-                
-                if(bidPrice > askPrice){
-                    transactionPrice = askPrice + Math.random() * (bidPrice - askPrice);
-                    potentialBuyer.traded = true;
-                    potentialBuyer.price = transactionPrice;
-                    potentialSeller.traded = true;
-                    potentialSeller.price = transactionPrice;
-                    buyers.set(buyerKey, potentialBuyer);
-                    sellers.set(sellerKey, potentialSeller);
+                if(!buyers.get(buyerKey).traded && !sellers.get(sellerKey).traded) {
+                        
+                    BuyerAgent potentialBuyer = buyers.get(buyerKey);
+                    SellerAgent potentialSeller = sellers.get(sellerKey);
+
+                    bidPrice = potentialBuyer.formBidPrice();
+                    askPrice = potentialSeller.formAskPrice();
+
+                    if(bidPrice > askPrice){
+                        transactionPrice = askPrice + Math.random() * (bidPrice - askPrice);
+                        potentialBuyer.traded = true;
+                        potentialBuyer.price = transactionPrice;
+                        potentialSeller.traded = true;
+                        potentialSeller.price = transactionPrice;
+                        buyers.set(buyerKey, potentialBuyer);
+                        sellers.set(sellerKey, potentialSeller);
+
+                        data.put(dig.newId(), transactionPrice);
                     
-                    data.put(dig.newId(), transactionPrice);
-                    
-                }   // fi bidPrice > askPrice                   
-            }       // fi Agents haven't already traded
-        }           // for each potential trade
-    }               // end run    
+                    }   // fi bidPrice > askPrice                   
+                }       // fi Agents haven't already traded
+            }           // while this key is in the map
+        }               // for each potential trade    
+    }                   // end run
 }
