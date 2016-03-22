@@ -17,14 +17,20 @@ public class SellerAgent implements Serializable {
     private double        cost;
     public double         price;
     public boolean        traded;
+    public long           agentID;  
 
-    public SellerAgent(double maxSellerCost) {
+    public SellerAgent(double maxSellerCost, long agentID) {
         this.cost    = Math.random() * maxSellerCost;
         this.maxCost = maxSellerCost;
         this.traded  = false;
+        this.agentID = agentID;
     }
 
     public double formAskPrice() {
         return cost + Math.random() * (maxCost - cost);
     }    
+    
+    public void doneTrading() {
+        this.traded = true;
+    }
 }
