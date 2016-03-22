@@ -16,10 +16,12 @@ public class BuyerAgent implements Serializable {
     public double  price;
     public boolean traded;
     private double value;
+    public long agentID;
 
-    public BuyerAgent(double maxBuyerValue) {
-        value  = Math.random() * maxBuyerValue;
-        traded = false;
+    public BuyerAgent(double maxBuyerValue, long agentID) {
+        this.value  = Math.random() * maxBuyerValue;
+        this.traded = false;
+        this.agentID = agentID;
     }
 
     public double formBidPrice() {
@@ -27,7 +29,7 @@ public class BuyerAgent implements Serializable {
     }
     
     public void doneTrading() {
-        traded = true;
+        this.traded = true;
     }
 }
 
