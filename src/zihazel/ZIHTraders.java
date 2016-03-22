@@ -11,18 +11,22 @@ package zihazel;
 import com.hazelcast.config.*;
 import com.hazelcast.core.*;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.concurrent.ThreadLocalRandom;
+
 
 
 public class ZIHTraders {
     /**
     * @param  
     */
-    static  long    numberOfBuyers  = 1_000L;
-    static  long    numberOfSellers = 1_000L;    
+    static  long    numberOfBuyers  = 5_000_000L;
+    static  long    numberOfSellers = 5_000_000L;    
     static  double  maxBuyerValue   = 30.0;
     static  double  maxSellerCost   = 30.0;
-    static  long    maxNumberTrades = 10_000L;
-    static  int     executionThreads= 40;
+    static  long    maxNumberTrades = 50_000_000L;
+    static  int     executionPool   = 40;
     
 //    double     tempN      = 0;
 //    double     tempAvg    = 0;
@@ -32,31 +36,51 @@ public class ZIHTraders {
     
     public static void main(String[] args) {
         Config cfg = new Config();
+        //Config cfg = new XmlConfigBuilder().build();
+        //cfg.setClassLoader(this.getClass().getClassLoader());
+        //cfg.setInstanceName("MyHazelcast");
+        
         HazelcastInstance hz = Hazelcast.newHazelcastInstance(cfg);
         IdGenerator idg = hz.getIdGenerator("newId"); // Agent IDs
-        IdGenerator dig = hz.getIdGenerator("did");   // Data IDs
+//        IdGenerator dig = hz.getIdGenerator("did");   // Data IDs
         
-        IMap<Long, BuyerAgent> buyers    = hz.getMap("buyers");
-        IMap<Long, SellerAgent> sellers  = hz.getMap("sellers");
-        Map<Long, Double> data = hz.getMap("data");
+        IMap<Long, BuyerAgent> buyers   = hz.getMap("buyers");
+        IMap<Long, SellerAgent> sellers = hz.getMap("sellers");
+        Map <Long, Double> data         = hz.getMap("data");
+        
+//        List<Long> buyerKeys = hz.getList("buyerKeys");
+//        List<Long> sellerKeys = hz.getList("sellerKeys");
         
         Config config = new Config();
         ExecutorConfig executorConfig = config.getExecutorConfig("exec");
-        executorConfig.setPoolSize(10).setQueueCapacity(100).setStatisticsEnabled(true);
+        executorConfig.setPoolSize(40).setQueueCapacity(80).setStatisticsEnabled(true);
         IExecutorService execService = hz.getExecutorService("exec");
         
         
         // Generate IMaps of BuyerAgents and SellerAgents
-        for (long l = 0; l < numberOfBuyers; l++) {
-            buyers.set(idg.newId(), new BuyerAgent(maxBuyerValue));                
-        }
+//        long makeThisManyBuyers = numberOfBuyers / executionPool;
+//        for(long l = 0; l < executionPool; l++){
+//            execService.execute(new MakeBuyers(makeThisManyBuyers));
+//        
+//        }
             
-        for(long l = 0; l < numberOfSellers; l++) {
-            sellers.set(idg.newId(), new SellerAgent(maxSellerCost));
+        for (long l = 0; l < numberOfBuyers; l++) {
+            long agentID = idg.newId();
+            buyers.set(agentID, new BuyerAgent(maxBuyerValue, agentID));                
         }
-        
-        long trades = maxNumberTrades / (long)executionThreads;
-        for (int i = 1; i< executionThreads; i++){
+
+//        long makeThisManySellers = numberOfSellers / executionPool;
+//        for(long l = 0; l < executionPool; l++){
+//            execService.execute(new MakeSellers(makeThisManySellers));
+//        }
+
+        for(long l = 0; l < numberOfSellers; l++) {
+            long agentID = idg.newId();
+            sellers.set(agentID, new SellerAgent(maxSellerCost, agentID));
+        }
+       
+        long trades = maxNumberTrades / (long)executionPool;
+        for (int i = 1; i< executionPool; i++){
             System.out.println("Starting trading round: " + i);
             execService.execute(new DoTrading(trades));
         }
